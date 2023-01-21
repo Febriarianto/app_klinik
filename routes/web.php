@@ -50,12 +50,15 @@ Route::prefix('backend')->middleware(['auth:web'])->group(function () {
 
 
     /* Dokter Route */
+    Route::get('dokter/select2', [Backend\DokterController::class, 'select2'])->name('dokter.select2');
     Route::resource('dokter', Backend\DokterController::class);
 
     /* Pasien Route */
+    Route::get('pasien/select2', [Backend\PasienController::class, 'select2'])->name('pasien.select2');
     Route::resource('pasien', Backend\PasienController::class);
 
     /* Perawatan Route */
+    Route::get('perawatan/select2', [Backend\PerawatanController::class, 'select2'])->name('perawatan.select2');
     Route::resource('perawatan', Backend\PerawatanController::class);
 
     /* Rekam Medis Route */

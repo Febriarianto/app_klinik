@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use App\Models\Puskesmas;
 use App\Models\User;
+use App\Models\Dokter;
+use App\Models\Pasien;
+use App\Models\Perawatan;
 
 class DashboardController extends Controller
 {
@@ -23,12 +25,14 @@ class DashboardController extends Controller
       ['url' => '#', 'title' => ""],
     ];
 
-    $countAdmin = User::where('role_id', '1')->count();
-    $countOperator = User::where('role_id', '2')->count();
+    $countDokter = Dokter::count();
+    $countPasien = Pasien::count();
+    $countPerawatan = Perawatan::count();
 
     $data = [
-      'countAdmin' => $countAdmin,
-      'countOperator' => $countOperator,
+      'countDokter' => $countDokter,
+      'countPasien' => $countPasien,
+      'countPerawatan' => $countPerawatan,
     ];
 
     return view('pages.backend.dashboard.index', compact('config', 'data'));

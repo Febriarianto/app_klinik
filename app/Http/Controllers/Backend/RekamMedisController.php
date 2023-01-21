@@ -3,24 +3,26 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
-use App\Models\Pasien;
+use App\Models\RekamMedis;
 use Illuminate\Http\Request;
 use App\Traits\ResponseStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\DataTables;
+use Illuminate\Support\Carbon;
+use App\Models\Perawatan;
 
-class PasienController extends Controller
+class RekamMedisController extends Controller
 {
     use ResponseStatus;
 
     function __construct()
     {
-        $this->middleware('can:pasien-list', ['only' => ['index', 'show']]);
-        $this->middleware('can:pasien-create', ['only' => ['create', 'store']]);
-        $this->middleware('can:pasien-edit', ['only' => ['edit', 'update']]);
-        $this->middleware('can:pasien-delete', ['only' => ['destroy']]);
+        $this->middleware('can:rekam-medis-list', ['only' => ['index', 'show']]);
+        $this->middleware('can:rekam-medis-create', ['only' => ['create', 'store']]);
+        $this->middleware('can:rekam-medis-edit', ['only' => ['edit', 'update']]);
+        $this->middleware('can:rekam-medis-delete', ['only' => ['destroy']]);
     }
     /**
      * Display a listing of the resource.
@@ -29,28 +31,32 @@ class PasienController extends Controller
      */
     public function index(Request $request)
     {
-        $config['title'] = "Pasien";
+        $config['title'] = "Rekam Medis";
         $config['breadcrumbs'] = [
-            ['url' => '#', 'title' => "Pasien"],
+            ['url' => '#', 'title' => "Rekam Medis"],
         ];
         if ($request->ajax()) {
-            $data = Pasien::query();
+            $data = RekamMedis::with(['pasien', 'dokter'])->get();
             return DataTables::of($data)
                 ->addIndexColumn()
+                ->addColumn('tgl', function ($row) {
+                    $tgl = Carbon::parse($row->created_at)->format('d-m-Y');
+                    return $tgl;
+                })
                 ->addColumn('action', function ($row) {
                     $actionBtn = '<div class="btn-group dropend">
                             <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                                 Aksi
                             </button>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="' . route('pasien.edit', $row->id) . '">Edit</a></li>
+                                <li><a class="dropdown-item" href="' . route('rekam-medis.edit', $row->id) . '">Edit</a></li>
                                 <li><a class="dropdown-item btn-delete" href="#" data-id ="' . $row->id . '" >Hapus</a></li>
                             </ul>
                           </div>';
                     return $actionBtn;
                 })->make();
         }
-        return view('pages.backend.pasien.index', compact('config'));
+        return view('pages.backend.rekammedis.index', compact('config'));
     }
 
     /**
@@ -60,28 +66,16 @@ class PasienController extends Controller
      */
     public function create()
     {
-        $config['title'] = "Tambah Pasien";
+        $config['title'] = "Tambah Rekam Medis";
         $config['breadcrumbs'] = [
-            ['url' => route('pasien.index'), 'title' => "Pasien"],
-            ['url' => '#', 'title' => "Tambah Pasien"],
+            ['url' => route('rekam-medis.index'), 'title' => "Rekam Medis"],
+            ['url' => '#', 'title' => "Tambah Rekam Medis"],
         ];
         $config['form'] = (object)[
             'method' => 'POST',
-            'action' => route('pasien.store')
+            'action' => route('rekam-medis.store')
         ];
-
-        $last_id = Pasien::latest()->first();
-
-        if (!empty($last_id->id)) {
-
-            $next_id = $last_id->id + 1;
-        } else {
-            $next_id = 1;
-        }
-
-        $no_rm = 'RM' . '-' . str_repeat(0, (5 - strlen($next_id))) . $next_id;
-
-        return view('pages.backend.pasien.form', compact('config', 'no_rm'));
+        return view('pages.backend.rekammedis.form', compact('config'));
     }
 
     /**
@@ -93,26 +87,29 @@ class PasienController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nomor_rm' => 'required',
-            'nama' => 'required',
-            'no_tlp' => 'required',
-            'alamat' => 'required',
-            'jenis_kelamin' => 'required',
+            'pasien_id' => 'required',
+            'keluhan' => 'required',
+            'dokter_id' => 'required',
+            'diagnosa' => 'required',
+            'perawatan' => 'required',
         ]);
+
+        $perawatan = json_encode($request['perawatan']);
+
         if ($validator->passes()) {
             DB::beginTransaction();
             try {
 
-                Pasien::create([
-                    'nomor_rm' => $request['nomor_rm'],
-                    'nama' => $request['nama'],
-                    'no_tlp' => $request['no_tlp'],
-                    'alamat' => $request['alamat'],
-                    'jenis_kelamin' => $request['jenis_kelamin'],
+                RekamMedis::create([
+                    'pasien_id' => $request['pasien_id'],
+                    'keluhan' => $request['keluhan'],
+                    'dokter_id' => $request['dokter_id'],
+                    'diagnosa' => $request['diagnosa'],
+                    'perawatan' => $perawatan,
                 ]);
 
                 DB::commit();
-                $response = response()->json($this->responseStore(true, NULL, route('pasien.index')));
+                $response = response()->json($this->responseStore(true, NULL, route('rekam-medis.index')));
             } catch (\Throwable $throw) {
                 Log::error($throw);
                 DB::rollBack();
@@ -127,10 +124,10 @@ class PasienController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  \App\Models\Pasien  $pasien
+     * @param  \App\Models\RekamMedis  $rekamMedis
      * @return \Illuminate\Http\Response
      */
-    public function show(Pasien $pasien)
+    public function show($id)
     {
         //
     }
@@ -138,56 +135,70 @@ class PasienController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Pasien  $pasien
+     * @param  \App\Models\RekamMedis  $rekamMedis
      * @return \Illuminate\Http\Response
      */
     public function edit($id)
     {
-        $config['title'] = "Edit Pasien";
+        $config['title'] = "Edit Rekam Medis";
         $config['breadcrumbs'] = [
-            ['url' => route('pasien.index'), 'title' => "Pasien"],
-            ['url' => '#', 'title' => "Edit Dokter"],
+            ['url' => route('rekam-medis.index'), 'title' => "Rekam Medis"],
+            ['url' => '#', 'title' => "Edit Rekam Medis"],
         ];
-        $data = Pasien::find($id);
+        $data = RekamMedis::with(['pasien', 'dokter'])->where('id', $id)->first();
+
+        $json = json_decode($data->perawatan);
+
+
+        foreach ($json as $p) {
+            $query = Perawatan::findOrFail($p);
+            $perawatan[] = [
+                'id' => $query->id,
+                'nama' => $query->nama,
+            ];
+        }
+        // dd($perawatan['1']['nama']);
         $config['form'] = (object)[
             'method' => 'PUT',
-            'action' => route('pasien.update', $id)
+            'action' => route('rekam-medis.update', $id)
         ];
-        return view('pages.backend.pasien.form', compact('config', 'data'));
+        return view('pages.backend.rekammedis.form', compact('config', 'data', 'perawatan'));
     }
 
     /**
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Pasien  $pasien
+     * @param  \App\Models\RekamMedis  $rekamMedis
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'nomor_rm' => 'required',
-            'nama' => 'required',
-            'no_tlp' => 'required',
-            'alamat' => 'required',
-            'jenis_kelamin' => 'required',
+            'pasien_id' => 'required',
+            'keluhan' => 'required',
+            'dokter_id' => 'required',
+            'diagnosa' => 'required',
+            'perawatan' => 'required',
         ]);
+
+        $perawatan = json_encode($request['perawatan']);
+
         if ($validator->passes()) {
             DB::beginTransaction();
             try {
 
-                $pasien = Pasien::findOrFail($id);
-
-                $pasien->update([
-                    'nomor_rm' => $request['nomor_rm'],
-                    'nama' => $request['nama'],
-                    'no_tlp' => $request['no_tlp'],
-                    'alamat' => $request['alamat'],
-                    'jenis_kelamin' => $request['jenis_kelamin'],
+                $rekam = RekamMedis::findOrFail($id);
+                $rekam->update([
+                    'pasien_id' => $request['pasien_id'],
+                    'keluhan' => $request['keluhan'],
+                    'dokter_id' => $request['dokter_id'],
+                    'diagnosa' => $request['diagnosa'],
+                    'perawatan' => $perawatan,
                 ]);
 
                 DB::commit();
-                $response = response()->json($this->responseStore(true, NULL, route('pasien.index')));
+                $response = response()->json($this->responseStore(true, NULL, route('rekam-medis.index')));
             } catch (\Throwable $throw) {
                 Log::error($throw);
                 DB::rollBack();
@@ -202,7 +213,7 @@ class PasienController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Pasien  $pasien
+     * @param  \App\Models\RekamMedis  $rekamMedis
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
@@ -211,7 +222,7 @@ class PasienController extends Controller
             'status' => 'error',
             'message' => 'Data gagal dihapus'
         ]);
-        $data = Pasien::find($id);
+        $data = RekamMedis::find($id);
         DB::beginTransaction();
         try {
             $data->delete();
@@ -225,34 +236,5 @@ class PasienController extends Controller
             $response = response()->json(['error' => $throw->getMessage()]);
         }
         return $response;
-    }
-
-    public function select2(Request $request)
-    {
-        $page = $request->page;
-        $resultCount = 10;
-        $offset = ($page - 1) * $resultCount;
-        $data = Pasien::where('nama', 'LIKE', '%' . $request->q . '%')
-            ->orderBy('nama')
-            ->skip($offset)
-            ->take($resultCount)
-            ->selectRaw('id, nama as text')
-            ->get();
-
-        $count = Pasien::where('nama', 'LIKE', '%' . $request->q . '%')
-            ->get()
-            ->count();
-
-        $endCount = $offset + $resultCount;
-        $morePages = $count > $endCount;
-
-        $results = array(
-            "results" => $data,
-            "pagination" => array(
-                "more" => $morePages
-            )
-        );
-
-        return response()->json($results);
     }
 }
