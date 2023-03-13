@@ -2,7 +2,7 @@
 @section('css')
 @endsection
 @section('content')
-<div class="col-md-12 col-lg-12 my-2 mx-2">
+<div class="col-md-12 col-lg-12">
     <div class="row row-cols-1">
         <div class="overflow-hidden d-slider1 ">
             <ul class="p-0 m-0 mb-2 swiper-wrapper list-inline">

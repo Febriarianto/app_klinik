@@ -51,7 +51,6 @@
 <script>
     $(document).ready(function() {
         $('#dt').DataTable({
-
             responsive: true,
             serverSide: true,
             processing: true,
