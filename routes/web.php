@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth as Auth;
 use App\Http\Controllers\Backend as Backend;
+use App\Http\Controllers\Api as Api;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,4 +64,9 @@ Route::prefix('backend')->middleware(['auth:web'])->group(function () {
 
     /* Rekam Medis Route */
     Route::resource('rekam-medis', Backend\RekamMedisController::class);
+
+
+    //Route REST API
 });
+
+Route::apiResource('/ApiPasien', Api\PasienController::class);
